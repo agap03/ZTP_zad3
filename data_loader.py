@@ -6,7 +6,6 @@ import re
 import calendar
 
 
-
 # funkcja do ściągania podanego archiwum
 def download_gios_archive(year, gios_id, filename, gios_archive_url):
     # Pobranie archiwum ZIP do pamięci
@@ -32,7 +31,6 @@ def download_gios_archive(year, gios_id, filename, gios_archive_url):
 
 # usuwanie niepotrzebnych wierszy
 # ujednolicanie struktury danych
-
 def edit_df(df, year):
     df_edited = df.copy()
     pattern_date = re.compile(r"\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}") # wzorzec daty i godziny do usuwania niepotrzebnych wierszy
@@ -69,7 +67,6 @@ def edit_df(df, year):
 
 
 # pobieranie metadanych stacji pomiarowych
-
 def download_gios_metadata(url):
     response = requests.get(url)
     response.raise_for_status()
@@ -80,8 +77,6 @@ def download_gios_metadata(url):
         except Exception as e:
             print(f"Błąd przy wczytywaniu metadanych: {e}")
             return None
-
-
 
 
 # stworzenie słownika mapującego stare kody stacji na nowe
@@ -124,35 +119,37 @@ def find_common_columns(df_list):
 
 
 # dodanie nazw miejscowości jako multiindexu kolumn
+def multiindex_code_city(df_list, metadata):
 
-def multiindex_code_city(df_list, metadata, columns):
+    meta = (
+        metadata[['Kod stacji', 'Miejscowość']]
+        .dropna()
+        .drop_duplicates()
+        .set_index('Kod stacji')
+    )
 
-    cities = metadata[['Kod stacji', 'Miejscowość']] # nazwy miejscowości
-    cities = cities.dropna()
-    cities.drop_duplicates(inplace=True)
+    out = []
 
-    first_level = cities['Kod stacji']
-    second_level = cities['Miejscowość']
-
-    # wybieramy tylko kolumny, które istnieją
-    mask = first_level.isin(columns)
-    first_level = first_level[mask]
-    second_level = second_level[mask]
-
-    first_level = list(first_level)
-    second_level = list(second_level)
-
-    # tworzymy MultiIndex
     for df in df_list:
-        df.columns = pd.MultiIndex.from_arrays([second_level, first_level])
+        # zachowujemy kolejność kolumn DF
+        cities = meta.loc[df.columns, 'Miejscowość']
 
-    return df_list
+        df_new = df.copy()
+        df_new.columns = pd.MultiIndex.from_arrays(
+            [cities, df.columns],
+            names=['Miejscowość', 'Kod stacji']
+        )
+
+        out.append(df_new)
+
+    return out
 
 
 # korekta indeksu daty i godziny (przesunięcie rekordów o 00:00:00 na poprzedni dzień)
 def correct_datetime_index(df):
     df.index = df.index - pd.to_timedelta((df.index.hour == 0).astype(int), unit='d')
     return df
+
 
 # scalenie danych z poszczególnych lat i zapis do pliku CSV
 def save_combined_data(df_list, filename):
