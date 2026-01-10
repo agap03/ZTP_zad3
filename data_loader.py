@@ -28,43 +28,61 @@ def download_gios_archive(year, gios_id, filename, gios_archive_url):
     return df
 
 
+# funkcja do ściągania wielu archiwów
+def download_gios_archives(years, gios_ids, filenames, gios_archive_url=None):
+
+    if gios_archive_url is None:
+        gios_archive_url = "https://powietrze.gios.gov.pl/pjp/archives/downloadFile/"
+
+    data = {}
+    for year in years:
+        df = download_gios_archive(year, gios_ids[year], filenames[year], gios_archive_url)
+        data[year] = df
+    
+    return data
+
+
 
 # usuwanie niepotrzebnych wierszy
 # ujednolicanie struktury danych
-def edit_df(df, year):
-    df_edited = df.copy()
-    pattern_date = re.compile(r"\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}") # wzorzec daty i godziny do usuwania niepotrzebnych wierszy
-    rows_to_drop = []
-    header_row_id = None
+def edit_df(df_dict):
 
-    for i in range(len(df_edited)):
-        
-        row = df_edited.iloc[i, 0]
-        if row == 'Kod stacji': # znalezienie indeksu z kodami stacji (aby ustawić jako nagłówki kolumn)
-            header_row_id = i
-        elif not pattern_date.match(str(row)):
-            rows_to_drop.append(i)
+    out = {} 
 
+    for year, df in df_dict.items():
+        df_edited = df.copy()
+        pattern_date = re.compile(r"\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}") # wzorzec daty i godziny do usuwania niepotrzebnych wierszy
+        rows_to_drop = []
+        header_row_id = None
 
-    df_edited.drop(labels=rows_to_drop, axis=0, inplace=True) # usuń niepotrzebne wiersze
-    df_edited.columns = df.loc[header_row_id] # ustaw nagłówki kolumn
-    df_edited.drop(labels=[header_row_id], axis=0, inplace=True) # usuń wiersz z nagłówkami
-    df_edited.reset_index(drop=True, inplace=True) # zresetuj indeksy
-    df_edited['Kod stacji'] = pd.to_datetime(df_edited['Kod stacji']) # zmień typ kolumny z kodami stacji na datetime
-    df_edited.set_index('Kod stacji', inplace=True) # ustaw kolumnę z kodami stacji jako indeks
+        for i in range(len(df_edited)):
+            
+            row = df_edited.iloc[i, 0]
+            if row == 'Kod stacji': # znalezienie indeksu z kodami stacji (aby ustawić jako nagłówki kolumn)
+                header_row_id = i
+            elif not pattern_date.match(str(row)):
+                rows_to_drop.append(i)
 
 
-    # sprawdzenie liczby dni w roku po edycji
-    num_of_days = (365 + calendar.isleap(year)) * 24
-    if num_of_days == len(df_edited):
-        print(f"Liczba dni w {year} się zgadza")
-    else: 
-        print("Liczba dni się nie zgadza")
-    print()
-
-    return df_edited
+        df_edited.drop(labels=rows_to_drop, axis=0, inplace=True) # usuń niepotrzebne wiersze
+        df_edited.columns = df.loc[header_row_id] # ustaw nagłówki kolumn
+        df_edited.drop(labels=[header_row_id], axis=0, inplace=True) # usuń wiersz z nagłówkami
+        df_edited.reset_index(drop=True, inplace=True) # zresetuj indeksy
+        df_edited['Kod stacji'] = pd.to_datetime(df_edited['Kod stacji']) # zmień typ kolumny z kodami stacji na datetime
+        df_edited.set_index('Kod stacji', inplace=True) # ustaw kolumnę z kodami stacji jako indeks
 
 
+        # sprawdzenie liczby dni w roku po edycji
+        num_of_days = (365 + calendar.isleap(year)) * 24
+        if num_of_days == len(df_edited):
+            print(f"Liczba dni w {year} się zgadza")
+        else: 
+            print(f"Liczba dni w {year} się nie zgadza")
+        print()
+
+        out[year] = df_edited
+
+    return out
 
 # pobieranie metadanych stacji pomiarowych
 def download_gios_metadata(url):
@@ -80,23 +98,29 @@ def download_gios_metadata(url):
 
 
 # stworzenie słownika mapującego stare kody stacji na nowe
-def create_code_map(gios_metadata, df_list):
+def create_code_map(gios_metadata, df_dict):
     codes = gios_metadata[['Stary Kod stacji \n(o ile inny od aktualnego)', 'Kod stacji']]
     codes = codes.dropna()
 
-    code_map = {}
-    for old_codes, new_code in zip(codes['Stary Kod stacji \n(o ile inny od aktualnego)'], codes['Kod stacji']):
-        for old_code in str(old_codes).split(','): # niektóre stare kody są rozdzielone przecinkami
-            code_map[old_code.strip()] = new_code
+    # rozdzielamy stare kody przecinkami
+    codes['Stary_Kod_List'] = codes['Stary Kod stacji \n(o ile inny od aktualnego)'].str.split(',')
 
-    for df in df_list:
+    # każdy stary kod w osobnym wierszu
+    codes_long = codes.explode('Stary_Kod_List')
+    codes_long['Stary_Kod_List'] = codes_long['Stary_Kod_List'].str.strip()
+
+
+    code_map = dict(zip(codes_long['Stary_Kod_List'], codes_long['Kod stacji']))
+
+    for df in df_dict.values():
         df.rename(columns=code_map, inplace=True)
-
-    return code_map, df_list
+    return df_dict
 
 
 # wspólne kolumny
-def find_common_columns(df_list):
+def find_common_columns(df_dict):
+
+    df_list = list(df_dict.values())
     common_cols = set(df_list[0].columns)
     for df in df_list[1:]:
         common_cols = common_cols.intersection(set(df.columns))
@@ -115,11 +139,17 @@ def find_common_columns(df_list):
             return None, None
     
     print(f"Liczba kolumn się zgadza: {col_len}")
-    return common_cols, df_list
+
+    df_dict_common = {}
+    for i, year in enumerate(df_dict.keys()):
+        df_dict_common[year] = df_list[i]
+        
+    return common_cols, df_dict_common
+
 
 
 # dodanie nazw miejscowości jako multiindexu kolumn
-def multiindex_code_city(df_list, metadata):
+def multiindex_code_city(df_dict, metadata):
 
     meta = (
         metadata[['Kod stacji', 'Miejscowość']]
@@ -128,9 +158,9 @@ def multiindex_code_city(df_list, metadata):
         .set_index('Kod stacji')
     )
 
-    out = []
+    out = {}
 
-    for df in df_list:
+    for year, df in df_dict.items():
         # zachowujemy kolejność kolumn DF
         cities = meta.loc[df.columns, 'Miejscowość']
 
@@ -140,22 +170,25 @@ def multiindex_code_city(df_list, metadata):
             names=['Miejscowość', 'Kod stacji']
         )
 
-        out.append(df_new)
+        out[year] = df_new
 
     return out
 
 
-# korekta indeksu daty i godziny (przesunięcie rekordów o 00:00:00 na poprzedni dzień)
-def correct_datetime_index(df):
-    df.index = df.index - pd.to_timedelta((df.index.hour == 0).astype(int), unit='d')
-    return df
+# korekta indeksu daty i godziny (przesunięcie rekordów o 00:00:00 n 23:59:59 poprzedniego dnia)
+def correct_datetime_index(df_dict):
+    for year, df in df_dict.items():
+        df.index = df.index - pd.to_timedelta((df.index.hour == 0).astype(int), unit='s')
+    return df_dict
 
 
 # scalenie danych z poszczególnych lat i zapis do pliku CSV
-def save_combined_data(df_list, filename):
+def save_combined_data(df_dict, filename):
 
-    df_all = pd.concat(df_list, ignore_index=False)
-    df_all.to_csv(filename, index=False)
+    df_list = list(df_dict.values())
+
+    df_all = pd.concat(df_list, join='inner', ignore_index=False)
+    df_all.to_csv(filename, index=True)
 
     # sprawdzenie liczby unikalnych dni w każdym roku
 

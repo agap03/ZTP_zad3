@@ -4,14 +4,17 @@ import seaborn as sns
 import pandas as pd
 
 # wykres porównujący średnie miesięczne poziomy PM2.5
-def plot_average(monthly_df, years, cities):
+def plot_average(monthly_df_grouped, years, cities):
     # średnie dla stacji
     colors = plt.cm.Set2.colors
     color_index = 0
-    for city in cities:
-        for year in years:
-            monthly_mean = monthly_df.loc[year, city].mean(axis = 1)
-            plt.plot(monthly_mean.index, monthly_mean.values, label=f'{city} {year}', marker='o', color=colors[color_index])
+
+    df = monthly_df_grouped[cities]
+    
+    for year in years:
+        df_year = df.loc[year]
+        for city in cities:
+            plt.plot(range(1,13), df_year[city], label=f'{city} {year}', marker='o', color=colors[color_index])
             color_index += 1
 
     plt.xlabel('Miesiąc')
@@ -23,9 +26,9 @@ def plot_average(monthly_df, years, cities):
     return 
 
 # heatmapy średnich miesięcznych poziomów PM2.5 dla wszystkich miast
-def heatmaps(monthly_df):
+def heatmaps(monthly_df_grouped):
     # lista miast
-    cities = [c for c in monthly_df.columns.levels[0] if c not in ['miesiąc', 'rok']]
+    cities = [c for c in monthly_df_grouped.columns if c not in ['miesiąc', 'rok']]
     n = len(cities)
 
     # siatka podwykresów
@@ -38,7 +41,7 @@ def heatmaps(monthly_df):
     for ax, city in zip(axes, cities):
         
         # średnie wartości miesięczne dla miasta 
-        city_data = monthly_df[city].mean(axis=1)
+        city_data = monthly_df_grouped[city]
         city_data = city_data.reset_index()
         city_data.columns = ['rok', 'miesiąc', 'PM2.5']
         city_data['PM2.5'] = pd.to_numeric(city_data['PM2.5'])
