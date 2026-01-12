@@ -63,23 +63,17 @@ def edit_df(df_dict):
             elif not pattern_date.match(str(row)):
                 rows_to_drop.append(i)
 
-
         df_edited.drop(labels=rows_to_drop, axis=0, inplace=True) # usuń niepotrzebne wiersze
         df_edited.columns = df.loc[header_row_id] # ustaw nagłówki kolumn
         df_edited.drop(labels=[header_row_id], axis=0, inplace=True) # usuń wiersz z nagłówkami
         df_edited.reset_index(drop=True, inplace=True) # zresetuj indeksy
         df_edited['Kod stacji'] = pd.to_datetime(df_edited['Kod stacji']) # zmień typ kolumny z kodami stacji na datetime
+        df_edited['Kod stacji'] = df_edited['Kod stacji'].dt.floor('h') # zaokrąglij do najbliższej godziny w dół
         df_edited.set_index('Kod stacji', inplace=True) # ustaw kolumnę z kodami stacji jako indeks
-
-
-        # sprawdzenie liczby dni w roku po edycji
-        num_of_days = (365 + calendar.isleap(year)) * 24
-        if num_of_days == len(df_edited):
-            print(f"Liczba dni w {year} się zgadza")
-        else: 
-            print(f"Liczba dni w {year} się nie zgadza")
-        print()
-
+        # Zamiana przecinka na kropkę i konwersja wszystkich kolumn na liczby
+        for col in df_edited.columns:
+            df_edited[col] = pd.to_numeric(df_edited[col].astype(str).str.replace(',', '.'), errors='coerce')
+    
         out[year] = df_edited
 
     return out
@@ -115,36 +109,6 @@ def create_code_map(gios_metadata, df_dict):
     for df in df_dict.values():
         df.rename(columns=code_map, inplace=True)
     return df_dict
-
-
-# wspólne kolumny
-def find_common_columns(df_dict):
-
-    df_list = list(df_dict.values())
-    common_cols = set(df_list[0].columns)
-    for df in df_list[1:]:
-        common_cols = common_cols.intersection(set(df.columns))
-
-    common_cols = list(common_cols)
-
-    # wybierz tylko wspólne kolumny
-    for i in range(len(df_list)):
-        df_list[i] = df_list[i][common_cols]
-
-    # sprawdzenie liczby kolumn po ujednoliceniu
-    col_len = len(common_cols)
-    for df in df_list:
-        if df.shape[1] != col_len:
-            print("Liczba kolumn się nie zgadza")
-            return None, None
-    
-    print(f"Liczba kolumn się zgadza: {col_len}")
-
-    df_dict_common = {}
-    for i, year in enumerate(df_dict.keys()):
-        df_dict_common[year] = df_list[i]
-        
-    return common_cols, df_dict_common
 
 
 
@@ -195,19 +159,6 @@ def save_combined_data(df_dict, filename):
     count_days = df_all.index.normalize().unique() # normalizacja do daty (bez godziny)
     count_days = pd.Series(count_days)
     count_days = count_days.groupby(count_days.dt.year).count()
-    print(count_days)
-
-    # sprawdzenie rozmiarów
-
-    for df in df_list:
-        print(df.shape)
-  
-    print(df_all.shape)
-
-    sum = 0
-    for df in df_list:
-        sum += df.shape[0]
-    print(sum)
 
     return df_all
 
