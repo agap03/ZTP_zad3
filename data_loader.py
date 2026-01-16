@@ -5,10 +5,42 @@ import io, os
 import re
 import calendar
 
+"""
+data_loader.py
+--------------
+Moduł obsłukuje wczytywanie danych i przygotowuje je do dalszej analizy 
 
-# funkcja do ściągania podanego archiwum
+Funkcje:
+- download_gios_archive: pobiera archiwum ZIP i wczytuje arkusz Exel 
+- download_multiple_gios_archives: zarządza wczytywaniem danych  
+- edit_df: czyści dane i ujednolica format w rankach danych 
+- download_gios_metadata: pobiera metadane z opisem i lokalizacją stacji, wyczytuje plik exel
+- create_code_map: mapuje nowe kody stacji do nowych i koryguje stare kody w ramkach danych
+- multiindex_code_city: Tworzy multiindex z nazwami miejscowości nad kodami stacji 
+- correct_datetime_index: Korekta godziny - przesunięcie z 00:00 na 23:59:59 poprzedniego dnia 
+- save_combined_data: Łączy ramki danych w jeden DataFrame i zapisuje do pliku CSV
+"""
+
 def download_gios_archive(year, gios_id, filename, gios_archive_url):
+    """
+    Funkcja pobiera archiwum ZIP dla podanego roku z GIOŚ, rozpakowuje je w pamięci i wczytuje arkusz Excel. 
+    
+    Args:
+        year (list[int]): rok dla którgo pobierane są dane
+        gios_id (str): id zaspobu 
+        filename (str): nazwa pliku (.xlsx) wewnątrz pobranego archiwum ZIP.
+        gios_archive_url (str): bazowy adres URL punktu końcowego archiwum GIOŚ
+    
+    Returns:
+        pd.DataFrame: ramka danych z pomiarami godzinowymi wartości PM2.5 dla danego roku
+        lub None w przypadku błedu 
+    
+    Rises:
+        requests.exceptions.HTTPError: Jeśli wystąpi problem z połączeniem lub zasób nie istnieje.
+
+    """
     # Pobranie archiwum ZIP do pamięci
+  
     url = f"{gios_archive_url}{gios_id}"
     response = requests.get(url)
     response.raise_for_status()  # jeśli błąd HTTP, zatrzymaj
@@ -28,9 +60,19 @@ def download_gios_archive(year, gios_id, filename, gios_archive_url):
     return df
 
 
-# funkcja do ściągania wielu archiwów
-def download_gios_archives(years, gios_ids, filenames, gios_archive_url=None):
-
+def download_multiple_gios_archives(years, gios_ids, filenames, gios_archive_url=None):
+    """
+    Jest to funkcja nadrzędna, która zarządza procesem wczytywania danych dla wielu lat.
+    
+    Args: 
+        years (list[int]): Lista lat do pobrania
+        gios_id (dict): Słownik przypisujący identyfikator pliku w bazie GIOŚ (wartość) do roku (klucz)
+        file_names (dict): Słownik przypisujący nazwę pliku .xlsx (wartość) do roku (klucz)
+        gios_archive_url (str, optional): Podstawowy adres URL API GIOŚ. Domyślna wartość to None
+    
+    Returns:
+        dict : Słownik mapujący ramki danych do każdego roku {rok: df}.
+    """
     if gios_archive_url is None:
         gios_archive_url = "https://powietrze.gios.gov.pl/pjp/archives/downloadFile/"
 
@@ -43,10 +85,19 @@ def download_gios_archives(years, gios_ids, filenames, gios_archive_url=None):
 
 
 
-# usuwanie niepotrzebnych wierszy
-# ujednolicanie struktury danych
-def edit_df(df_dict):
 
+def edit_df(df_dict):
+    """
+    Funkcja usuwa niepotrzebne wiersze i ujednolica strukturę danych
+    Proces obejmuje usuwanie wierszy opisowych, zaokrąglanie czasu do pełnych godzin (w dół)
+    i ustawienie daty jako indeksu. 
+    
+    Args:
+        df_dict (dict): słownik mapujący surowe dane w ramkach danych do roku {rok: df}
+    
+    Returns:
+        dict : słownik mapujący ramki danych z oczyszczonymi danymi i DatetimeIndex do roku {rok: df}.
+    """
     out = {} 
 
     for year, df in df_dict.items():
@@ -78,8 +129,20 @@ def edit_df(df_dict):
 
     return out
 
-# pobieranie metadanych stacji pomiarowych
+
 def download_gios_metadata(url):
+    """
+    Funkcja pobiera plik Excel z metadanymi stacji pomiarowych (lokalizacje, kody)
+    
+    Args:
+        url (str): Adres URL do pliku Excel z metadanymi.
+    
+    Returns:
+        pd.DataFrame: Ramka danych z metadanymi lub None w przypadku błędu.
+    
+    Rises: 
+        requests.exceptions.HTTPError: Jeśli wystąpi problem z połączeniem lub zasób nie istnieje.
+    """
     response = requests.get(url)
     response.raise_for_status()
     with io.BytesIO(response.content) as f:
@@ -91,8 +154,20 @@ def download_gios_metadata(url):
             return None
 
 
-# stworzenie słownika mapującego stare kody stacji na nowe
 def create_code_map(gios_metadata, df_dict):
+    """
+    Mapuje nowe kody stacji do starych i aktualizuje nazwy kolumn w ramkach danych.
+
+    Dba o spójność identyfikatorów stacji w przypadku zmian nazewnictwa na przestrzeni lat.
+
+    Args:
+        gios_metadata (pd.DataFrame): Tabela metadanych zawierająca kolumny z kodami.
+        df_dict (dict): Słownik mapujący oczyszczone i ujednolicone ramki danych do analizowanych lat
+
+    Returns:
+        dict: Zaktualizowany słownik z ujednoliconymi nazwami stacji w ramkach danych.
+    
+    """
     codes = gios_metadata[['Stary Kod stacji \n(o ile inny od aktualnego)', 'Kod stacji']]
     codes = codes.dropna()
 
@@ -111,10 +186,19 @@ def create_code_map(gios_metadata, df_dict):
     return df_dict
 
 
-
-# dodanie nazw miejscowości jako multiindexu kolumn
 def multiindex_code_city(df_dict, metadata):
+    """
+    Funkcja tworzy MultiIndex kolumn łączący Miejscowość z Kodem stacji.
 
+    Ułatwia czytelną analizę danych poprzez dodanie nazwy miasta nad kodem stacji.
+
+    Args:
+        df_dict (dict): Słownik z ramkami danych zmapowanymi do analizowanych lat.
+        metadata (pd.DataFrame): Metadane stacji (do powiązania kodu z miastem).
+
+    Returns:
+        dict: Słownik ramek danych z MultiIndexem na kolumnach.
+    """
     meta = (
         metadata[['Kod stacji', 'Miejscowość']]
         .dropna()
@@ -139,16 +223,33 @@ def multiindex_code_city(df_dict, metadata):
     return out
 
 
-# korekta indeksu daty i godziny (przesunięcie rekordów o 00:00:00 n 23:59:59 poprzedniego dnia)
 def correct_datetime_index(df_dict):
+    """
+    Funkcja koryguje indeks czasu, przesuwając rekordy z godziny 00:00:00 na 23:59:59 poprzedniego dnia.
+
+    Args:
+        df_dict (dict): Słownik ramek danych z DatetimeIndex zmapowanych do analizowanych lat.
+
+    Returns:
+        dict: Słownik z poprawionymi indeksami czasowymi.
+    """
     for year, df in df_dict.items():
         df.index = df.index - pd.to_timedelta((df.index.hour == 0).astype(int), unit='s')
     return df_dict
 
 
-# scalenie danych z poszczególnych lat i zapis do pliku CSV
 def save_combined_data(df_dict, filename):
+    """
+    Funkcja scala dany ze wszytskich lat w jednę ramkę danych i zapisuje ją do pliku CSV.
+    Sprawdzą również czy liczba dni w kazdym roku jest prawidłowa.
 
+    Args:
+        df_dict (dict): Słownik ramek danych do połączenia.
+        filename (str): Nazwa docelowego pliku .csv
+
+    Returns:
+        pd.DataFrame: Połączona ramka danych ze wszytkich lat.
+    """
     df_list = list(df_dict.values())
 
     df_all = pd.concat(df_list, join='inner', ignore_index=False)

@@ -2,17 +2,46 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+"""
+average_and_limits.py
+--------------
+Moduł służy do obliczania średnich czasowych wartości PM2.5 oraz zliczania liczby dni z przekroczeniem normy
+jakości powietrza. 
+"""
 
 
-# obliczanie średnich miesięcznych dla każdego roku i stacji
 def monthly_mean(df):
+    """
+    Funkcja oblicza średnie mieięczne dla każdego roku i stacji 
+
+    Args:
+        df (pd.DataFrame) : DataFrame z indexem DatetimeIndex oraz scalonymi danymi ze wszystkich badanych lat i stacji. 
+
+    Returns:
+        pd.DataFrame: Obiekt z MultiIndexem ['rok', 'miesiąc'] zawierający średnie miesięczne dla każdej stacji.
+    """
     monthly_mean = df.groupby([df.index.year, df.index.month]).mean()
     monthly_mean.index.names = ['rok', 'miesiąc']  # nadajemy nazwy poziomom indeksu
     return monthly_mean
 
 
-# dni z przekroczeniem normy PM2.5 dla każdej stacji i roku
 def find_above_norm(df, years, sort_by, norm=15):
+    """
+    Funkcja dla każdej stacji i roku liczy liczbę dni, w których średnie dobowe stężenie PM2.5 przekroczyło normę.  
+
+    Funkcja najpierw sprowadza dane do średnich dobowych, a następnie zlicza wystąpienia przekroczeń 
+    dla każdej stacji w poszczególnych latach.
+
+    Args:
+        df (pd.DataFrame): Ramka danych z pomiarami (DatetimeIndex).
+        years (list[int]): Lista lat, dla których ma zostać przeprowadzona analiza.
+        sort_by (int):  Rok według którego zostawnie posortowana tabela wynikowa
+        norm (int, optional): Dobowa norma PM2.5. Domyślnie 15 µg/m³.
+
+    Returns:
+        pd.dataFrame : Wiersze to miejscowości i kody stacji, a kolumny to lata z liczbą dni przekroczenia normy  
+    """
+    
     norms = {}
 
     df_group = df.groupby(df.index.date).mean() 

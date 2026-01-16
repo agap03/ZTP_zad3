@@ -2,9 +2,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+"""
+visualizations.py
+--------------
+Moduł służący do wizualizacji danych o stężeniu pyłów PM2.5.
+Zawiera funkcje do generowania wykresów liniowych, map ciepła (heatmaps) 
+oraz zestawień słupkowych dla wybranych stacji pomiarowych.
 
-# wykres porównujący średnie miesięczne poziomy PM2.5
+"""
 def plot_average(monthly_df_grouped, years, cities):
+    """
+        Funkcja rysująca wykres liniowy pokazujący trend średnich miesięcznych wartości PM2.5 dla wybranych lat i miast  
+
+    Args:
+        monthly_df_grouped (pd.DataFrame): Zgrupowana po miastach ramka danych z uśrednionymi miesięcznymi wartościami PM2.5 
+        years (list[int]): lista lat które będą analizowane  
+        cities(list[str]): lista analizowanych miast 
+   
+    Returns:
+        None
+    """
     # średnie dla stacji
     colors = plt.cm.Set2.colors
     color_index = 0
@@ -25,8 +42,16 @@ def plot_average(monthly_df_grouped, years, cities):
     plt.show()
     return 
 
-# heatmapy średnich miesięcznych poziomów PM2.5 dla wszystkich miast
 def heatmaps(monthly_df_grouped):
+    """
+        Funkcja rysująca heatmapy średnich miesięcznych wartości PM2.5 dla wszystkich miast
+    
+    Args:
+        monthly_df_grouped (DataFrame): Zgrupowana po misatach ramka danych z uśrednionymi wartościami PM2.5 po wszytkich stacjach z danego miasta 
+    
+    Returns:
+        None
+    """
     # lista miast
     cities = [c for c in monthly_df_grouped.columns if c not in ['miesiąc', 'rok']]
     n = len(cities)
@@ -62,8 +87,20 @@ def heatmaps(monthly_df_grouped):
     return
 
 
-# wykres słupkowy dla 3 stacji z najmniejszą i 3 z największą liczbą dni przekroczenia normy
+
 def bar_plots(norms_df, year):
+    """
+        Funkcja przygotowująca wykres słupkowy grupowany ze wszytkich analizowanych lat dla 3 stacji z najmniejszą i 3 z największą liczbą dni przekroczenia normy w wybranym roku, gdzie oś X – stacje,
+        a oś Y – liczba dni z przekroczeniem normy
+    
+    Args:
+        norms_df (pd.DataFrame): Dataframe z z MultiIndexem (['Miejscowość', 'Kod stacji']. 
+            Kolumny to lata, wartości to liczba dni powyżej normy.
+        year (int): Rok referencyjny dla wyboru stacji ekstremalnych. 
+    
+    Returns:
+        None
+    """
     min_stations = norms_df[year].nsmallest(3).index.get_level_values(1).tolist()
     max_stations = norms_df[year].nlargest(3).index.get_level_values(1).tolist()
     stations = min_stations + max_stations

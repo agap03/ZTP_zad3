@@ -6,6 +6,12 @@ import pytest
 import pandas as pd
 import numpy as np
 
+"""
+test_ztp.py
+-----------
+Moduł zawierający testy dla projektu analizy jakości powietrza PM2.5.
+"""
+
 # TEST 1
 
 '''from data_loader import multiindex_code_city
@@ -42,6 +48,13 @@ from average_and_limits import monthly_mean
      ([5, 15, 25, 35, 45], 25.0),]
 )
 def test_monthly_mean(values, expected):
+    """
+    Testuje funkcje monthly_mean().
+    
+    Args:
+        values (list): Lista wartości PM2.5 do uśrednienia.
+        expected (float): Oczekiwana wartość średnia.
+    """
     dates = pd.date_range(start="2023-01-01", periods=len(values), freq="d")
     series = pd.DataFrame({'A': values}, index=dates)
     result = monthly_mean(series)
@@ -53,6 +66,11 @@ def test_monthly_mean(values, expected):
 from average_and_limits import find_above_norm
 
 def test_find_above_norm():
+    """Testuje funkcje find_above_norm().
+    
+    Test tworzy symulowane dane dla 2 dni (48 godzin). Sprawdza, czy funkcja 
+    poprawnie rozpoznaje dni, w których średnia dobowa przekroczyła próg (norm).
+    """
     idx = pd.date_range("2024-01-01", periods=48, freq="h")  #2 dni
     df = pd.DataFrame(
         {"S1": [20] * 48,  # zawsze powyżej normy
@@ -71,6 +89,9 @@ def test_find_above_norm():
 from visualizations import plot_average
 
 def test_plot_average():
+    """
+   Testuje funkcje plot_average().
+    """
     index = pd.MultiIndex.from_product(
         [[2023], range(1, 13)],
         names=["rok", "miesiąc"]
@@ -88,6 +109,7 @@ from data_loader import edit_df
 import calendar
 
 def test_edit_df():
+    """Testuje funkcje edit_df()."""
     dates = pd.date_range("2023-01-01", periods=365*24, freq="h")
     data = np.ones((365*24, 2))
     df = pd.DataFrame(data, columns=["A", "B"])
@@ -112,6 +134,14 @@ def test_edit_df():
 from data_loader import save_combined_data
 
 def test_save_combined_data(tmp_path):
+    """Testuje funkcję scalania i zapisu danych save_combined_data().
+    
+    Test wykorzystuje 'tmp_path' do  zapisu pliku tymczasowego. Sprawdza poprawność rozmiarów oraz 
+    unikalność dni w scalonym indeksie.
+    
+    Args:
+        tmp_path: Ścieżka do katalogu tymczasowego dostarczona przez pytest.
+    """
     # dwa df
     idx1 = pd.date_range("2023-01-01", periods=24, freq="h")
     df1 = pd.DataFrame(np.ones((24,2)), index=idx1, columns=["A","B"])
