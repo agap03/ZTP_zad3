@@ -14,9 +14,15 @@ Moduł zawierający testy dla projektu analizy jakości powietrza PM2.5.
 
 # TEST 1
 
-'''from data_loader import multiindex_code_city
+from data_loader import multiindex_code_city
 
 def test_multiindex_code_city():
+    """
+    Testuje funkcję multiindex_code_city().
+    Test tworzy symulowane dane i metadane, a następnie wywołuje funkcję.
+    Sprawdza, czy kolumny wynikowej ramki danych są MultiIndexem z odpowiednimi nazwami poziomów.
+    """
+
     df = pd.DataFrame(
         [[1,2]],
         columns=["A1", "B1"]
@@ -34,7 +40,6 @@ def test_multiindex_code_city():
     assert isinstance(cols, pd.MultiIndex), "Błąd kolumn w multiindex_code_city"
     assert cols.names == ["Miejscowość", "Kod stacji"], "Błędne nazwy poziomów kolumn w multiindex_code_city"
 
-'''
 
 # TEST 2
 
@@ -66,7 +71,7 @@ def test_monthly_mean(values, expected):
 from average_and_limits import find_above_norm
 
 def test_find_above_norm():
-    """Testuje funkcje find_above_norm().
+    """Testuje funkcję find_above_norm().
     
     Test tworzy symulowane dane dla 2 dni (48 godzin). Sprawdza, czy funkcja 
     poprawnie rozpoznaje dni, w których średnia dobowa przekroczyła próg (norm).
@@ -90,7 +95,7 @@ from visualizations import plot_average
 
 def test_plot_average():
     """
-   Testuje funkcje plot_average().
+   Testuje funkcję plot_average().
     """
     index = pd.MultiIndex.from_product(
         [[2023], range(1, 13)],
@@ -109,7 +114,7 @@ from data_loader import edit_df
 import calendar
 
 def test_edit_df():
-    """Testuje funkcje edit_df()."""
+    """Testuje funkcję edit_df()."""
     dates = pd.date_range("2023-01-01", periods=365*24, freq="h")
     data = np.ones((365*24, 2))
     df = pd.DataFrame(data, columns=["A", "B"])
