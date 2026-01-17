@@ -1,5 +1,4 @@
 import matplotlib
-from streamlit import header
 matplotlib.use("Agg") # nie wyświetlaj okienek z wykresami
 
 import pytest
