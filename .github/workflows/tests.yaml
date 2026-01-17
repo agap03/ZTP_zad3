@@ -12,9 +12,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      - run: pip install pytest
-            pip install matplotlib
-            pip install pandas
-            pip install numpy
+      - run: pip install pytest matplotlib pandas numpy
 
       - run: pytest
