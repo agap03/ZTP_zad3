@@ -1,0 +1,10 @@
+pytest
+matplotlib
+pandas
+numpy
+calendar
+seaborn
+requests
+zipfile
+io
+re

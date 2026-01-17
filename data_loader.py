@@ -1,9 +1,8 @@
 import pandas as pd
 import requests
 import zipfile
-import io, os
+import io
 import re
-import calendar
 
 """
 data_loader.py
