@@ -36,6 +36,7 @@ def test_multiindex_code_city():
     out = multiindex_code_city(df_dict, meta)
 
     cols = out[2023].columns
+    assert set(cols.get_level_values("Miejscowość")) == {"X","Y"} 
     assert isinstance(cols, pd.MultiIndex), "Błąd kolumn w multiindex_code_city"
     assert cols.names == ["Miejscowość", "Kod stacji"], "Błędne nazwy poziomów kolumn w multiindex_code_city"
 
