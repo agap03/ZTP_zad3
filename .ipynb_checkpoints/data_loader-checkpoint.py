@@ -264,11 +264,13 @@ def save_combined_data(df_dict, filename):
 
 
 # Przgotowanie danych do zadania z województwami:
-def prepare_station_metadata(metadata, station_col="Kod stacji"):
+def prepare_station_voiv_map(metadata, station_col="Kod stacji"):
     """
-    Zwraca liczbę dni z przekroczeniem normy PM2.5 zagregowaną po województwach
-    """
-    return (metadata[[station_col, "Województwo"]].dropna().drop_duplicates(subset=[station_col]))
+    Przygotowanie matadanych stacji pomiarowych w postaci mapowania kodu stacji na województwo.
+    """    
+    df = metadata[[station_col, "Województwo"]].dropna().drop_duplicates(subset=[station_col])
+    return df.set_index(station_col)["Województwo"]
+
 
 if __name__ == "__main__":
     pass

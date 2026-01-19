@@ -54,17 +54,35 @@ def find_above_norm(df, years, sort_by, norm=15):
     return norms_df
 
 # zadanie z województwami:
-def voivodeship_exceedances(norms_df, metadata, station_col = "Kod stacji", years=(2015, 2018, 2021, 2024)):
-    """
-    Zwraca średnią liczbę dni z przekroczeniem normy PM2.5, zagregowaną po województwach.
-    """
-    df = norms_df.reset_index().copy()
-    df = df.merge(metadata, on=station_col, how="left")
-    years = [y for y in years if y in df.columns]
+import pandas as pd
 
-    # agregacja: średnia dni przekroczeń po województwach:
-    voiv_df = df.dropna(subset=["Województwo"]).groupby("Województwo", as_index=False)[years].mean()
-    return voiv_df
+def voivodeship_exceedances(df, voiv_map, years=(2015, 2018, 2021, 2024),norm = 15.0, station_col = "Kod stacji"):
+    """
+    Liczy liczbę dni w roku, w których dobowa średnia PM2.5 uśredniona 
+    po wszystkich stacjach w danym województwie przekroczyła normę.
+    """
+    # Średnia dobowa na stację:
+    df_daily = df.resample("D").mean()
+
+    # Wyciąganie kodów stacji z kolumn
+    if isinstance(df_daily.columns, pd.MultiIndex):
+        station_codes = df_daily.columns.get_level_values("Kod stacji")
+    else:
+        station_codes = pd.Index(df_daily.columns)
+
+    # mapowanie województw dla stacji
+    voiv_for_station = station_codes.map(voiv_map)
+
+    # Średnia dobowa po województwach
+    df_voiv_daily = (df_daily.T.groupby(voiv_for_station).mean().T)
+
+    # Zliczanie dni powyżej normy w każdym roku
+    out = {}
+    for y in years:
+        df_y = df_voiv_daily[df_voiv_daily.index.year == y]
+        out[y] = (df_y > norm).sum()  
+        
+    return pd.DataFrame(out).sort_index()
 
 
 if __name__ == "__main__":
