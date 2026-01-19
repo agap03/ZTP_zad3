@@ -209,11 +209,8 @@ def multiindex_code_city(df_dict, metadata):
 
     for year, df in df_dict.items():
         # zachowujemy kolejność kolumn DF
-        cities = pd.Series(
-            ["X"] * len(df.columns),
-            index=df.columns
-        )
-        
+        cities = meta.loc[df.columns, 'Miejscowość']
+
         df_new = df.copy()
         df_new.columns = pd.MultiIndex.from_arrays(
             [cities, df.columns],
