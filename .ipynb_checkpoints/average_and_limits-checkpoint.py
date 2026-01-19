@@ -53,51 +53,20 @@ def find_above_norm(df, years, sort_by, norm=15):
     norms_df = norms_df.sort_values(by=sort_by) # sortowanie według liczby dni przekroczenia normy w 2024
     return norms_df
 
+# zadanie z województwami:
+def voivodeship_exceedances(norms_df, metadata, station_col = "Kod stacji", years=(2015, 2018, 2021, 2024)):
+    """
+    Zwraca średnią liczbę dni z przekroczeniem normy PM2.5, zagregowaną po województwach.
+    """
+    df = norms_df.reset_index().copy()
+    df = df.merge(metadata, on=station_col, how="left")
+    years = [y for y in years if y in df.columns]
+
+    # agregacja: średnia dni przekroczeń po województwach:
+    voiv_df = df.dropna(subset=["Województwo"]).groupby("Województwo", as_index=False)[years].mean()
+    return voiv_df
+
 
 if __name__ == "__main__":
     pass
 
-# zadanie z województwami:
-
-PREFIX_TO_VOIVODESHIP = {
-    "Zp": "zachodniopomorskie",
-    "Pd": "podlaskie",
-    "Mz": "mazowieckie",
-    "Pm": "pomorskie",
-    "Kp": "kujawsko-pomorskie",
-    "Ds": "dolnośląskie",
-    "Op": "opolskie",
-    "Sl": "śląskie",
-    "Ld": "łódzkie",
-    "Wm": "warmińsko-mazurskie",
-    "Lu": "lubuskie",
-    "Pk": "podkarpackie",
-    "Mp": "małopolskie",
-    "Wp": "wielkopolskie",
-    "Lb": "lubelskie",
-}
-
-def voivodeship_exceedances(
-    norms_df: pd.DataFrame,
-    station_col: str = "Kod stacji",
-    years=(2015, 2018, 2021, 2024),
-) -> pd.DataFrame:
-    """
-    Zwraca liczbę dni z przekroczeniem normy PM2.5 zagregowaną po województwach.
-    """
-    df = norms_df.reset_index().copy()
-
-    # województwo z prefiksu kodu stacji
-    df["Województwo"] = (
-        df[station_col].astype(str).str[:2].map(PREFIX_TO_VOIVODESHIP)
-    )
-    years = [y for y in years if y in df.columns]
-
-    # agregacja: suma dni przekroczeń po województwach
-    voiv_df = (
-        df.dropna(subset=["Województwo"])
-          .groupby("Województwo", as_index=False)[years]
-          .sum()
-    )
-
-    return voiv_df

@@ -127,26 +127,20 @@ def bar_plots(norms_df, year):
 
 
 #wizualizacja do zad. 5 z województwami:
-def plot_voivodeship_exceedances(
-    voiv_df: pd.DataFrame,
-    years=(2015, 2018, 2021, 2024),
-    figsize=(12, 6),
-) -> plt.Figure:
+def plot_voivodeship_exceedances(voiv_df, years=(2015, 2018, 2021, 2024), figsize=(12, 6)):
     """
     Wykres słupkowy: liczba dni przekroczeń normy PM2.5 po województwach.
     """
     years = [y for y in years if y in voiv_df.columns]
     df = voiv_df.copy()
     df = df.set_index("Województwo")[years]
-
     ax = df.plot(kind="bar", figsize=figsize)
-    ax.set_title("Dni z przekroczeniem normy PM2.5 (WHO) wg województw")
+    ax.set_title("Średnia liczba dni z przekroczeniem normy PM2.5 (WHO) wg województw")
     ax.set_xlabel("Województwo")
     ax.set_ylabel("Liczba dni z przekroczeniem")
-    ax.legend(title="Rok")
+    ax.legend(title="Rok", loc="center left", bbox_to_anchor=(1.02, 0.5))
     plt.tight_layout()
-
-    return ax.figure
-
+    plt.show()
+    
 if __name__ == "__main__":
     pass
